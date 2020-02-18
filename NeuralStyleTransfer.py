@@ -90,9 +90,9 @@ style_layers = []
 style_weights = []
 
 content_layers = ['r42']
-# content_weights = [1e2]
+content_weights = [1e2]
 # content_layers = []
-content_weights = []
+# content_weights = []
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
