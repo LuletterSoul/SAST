@@ -89,9 +89,9 @@ style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 style_layers = []
 style_weights = []
 
-content_layers = ['r42']
+# content_layers = ['r42']
 # content_weights = [1e2]
-# content_layers = []
+content_layers = []
 content_weights = []
 
 # laplacia_layers = ['r32']
