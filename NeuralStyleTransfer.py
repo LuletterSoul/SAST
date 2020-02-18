@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/12-19-lw1e5_iter500_200_512_ul50_uh50_kl7_km1_maskguided2',
+                    default='./experiments/02-18_maskguide_cw1e2_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -88,10 +88,10 @@ save_dir.mkdir(exist_ok=True, parents=True)
 style_layers = []
 style_weights = []
 
-# content_layers = ['r42']
-# content_weights = [1e2]
-content_layers = []
-content_weights = []
+content_layers = ['r42']
+content_weights = [1e2]
+# content_layers = []
+# content_weights = []
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
@@ -399,7 +399,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             outputs = torch.cat(outputs, dim=0)
             o = torch.cat([style_images, outputs], dim=0)
             path = os.path.join(args.save_dir,
-                                '{}-{}-{}.png'.format(epoch, content_name[0], style_name[0]))
+                                'total-{}-{}-{}.png'.format(epoch, content_name[0], style_name[0]))
             torchvision.utils.save_image(o, path, nrow=args.batch_size)
             print('Save to [{}]'.format(path))
             outputs = []
