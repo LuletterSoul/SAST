@@ -395,10 +395,6 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         style_images.append(style_image_hr)
         outputs.append(out_img_hr)
 
-        output_path = os.path.join(args.save_dir, f'{epoch}-{content_name[0]}-{style_name[0]}.png')
-        torchvision.utils.save_image(out_img_hr, output_path)
-
-        print('Dones: [{}-{}].'.format(content_name[0], style_name[0]))
         if (epoch + 1) % args.batch_size == 0:
             style_images = torch.cat(style_images, dim=0)
             outputs = torch.cat(outputs, dim=0)
@@ -409,6 +405,11 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             print('Save to [{}]'.format(path))
             outputs = []
             style_images = []
+
+        output_path = os.path.join(args.save_dir, f'{epoch}-{content_name[0]}-{style_name[0]}.png')
+        torchvision.utils.save_image(out_img_hr, output_path)
+        print('Dones: [{}-{}].'.format(content_name[0], style_name[0]))
+
         epoch += 1
 # gcf().set_size_inches(10,10)
 
