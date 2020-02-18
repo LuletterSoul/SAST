@@ -138,32 +138,35 @@ def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None,
     style_feat = style_feat.squeeze()
     n_content_feat = F.normalize(content_feat, dim=0).view(C, -1)
     n_style_feat = F.normalize(style_feat, dim=0).view(C, -1)
-    cosince_dist_matrix = torch.mm(n_content_feat.t(), n_style_feat)
+    cosine_dist_matrix = torch.mm(n_content_feat.t(), n_style_feat)
+    mask = torch.ones(H * W, H * W, dtype=n_content_feat.dtype).to(device)
     if reverse:
-        cosince_dist_matrix *= -1
+        cosine_dist_matrix *= -1
+
     # print('Cosin dis matrix size: [{}]'.format(cosince_dist_matrix.size()))
     if c_mask is not None and s_mask is not None:
         c_mask = F.interpolate(c_mask.float(), [H, W]).long().view(H * W, 1)
         s_mask = F.interpolate(s_mask.float(), [H, W]).long().view(1, H * W)
-        test = (c_mask == s_mask).long()
-        print(torch.sum(test))
-        graph = (c_mask == s_mask).type_as(n_content_feat)
-    else:
-        graph = torch.zeros(H * W, H * W, dtype=n_content_feat.dtype).to(device)
-        index = torch.topk(cosince_dist_matrix, k, 0)[1]
-        value = torch.ones(k, H * W, dtype=n_content_feat.dtype).to(device)
-        graph.scatter_(0, index, value)  # set weight matrix
+        # test = (c_mask == s_mask).long()
+        # print(torch.sum(test))
+        mask = (c_mask == s_mask).type_as(n_content_feat)
 
-        del index
-        del value
+    cosine_dist_matrix *= mask
+    graph = torch.zeros(H * W, H * W, dtype=n_content_feat.dtype).to(device)
+    index = torch.topk(cosine_dist_matrix, k, 0)[1]
+    value = torch.ones(k, H * W, dtype=n_content_feat.dtype).to(device)
+    graph.scatter_(0, index, value)  # set weight matrix
 
-        index = torch.topk(cosince_dist_matrix, k, 1)[1]
-        value = torch.ones(H * W, k, dtype=n_content_feat.dtype).to(device)
-        graph.scatter_(1, index, value)  # set weight matrix
+    del index
+    del value
 
-        del index
-        del value
-        del cosince_dist_matrix
+    index = torch.topk(cosine_dist_matrix, k, 1)[1]
+    value = torch.ones(H * W, k, dtype=n_content_feat.dtype).to(device)
+    graph.scatter_(1, index, value)  # set weight matrix
+
+    del index
+    del value
+    del cosine_dist_matrix
 
     return graph
 

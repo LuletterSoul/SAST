@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/12-19-lw1e5_iter500_200_512_ul50_uh50_kl7_km1_maskguided2',
+                    default='./experiments/02-17-lw1e5_iter500_200_512_ul50_uh50_kl7_km1_maskguided2',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -83,14 +83,15 @@ save_dir.mkdir(exist_ok=True, parents=True)
 # img_size_hr = 800  # works for 8GB GPU, make larger if you have 12GB or more
 
 # these are layers settings:
-# style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
+style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
+# style_layers = ['r11','r21','r31','r41', 'r51']
 style_layers = []
 style_weights = []
 
-# content_layers = ['r42']
+content_layers = ['r42']
 # content_weights = [1e2]
-content_layers = []
+# content_layers = []
 content_weights = []
 
 # laplacia_layers = ['r32']
@@ -393,13 +394,17 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         # imshow(out_img_hr)
         style_images.append(style_image_hr)
         outputs.append(out_img_hr)
+
+        output_path = os.path.join(args.save_dir, f'{epoch}-{content_name[0]}-{style_name[0]}.png')
+        torchvision.utils.save_image(out_img_hr, output_path)
+
         print('Dones: [{}-{}].'.format(content_name[0], style_name[0]))
         if (epoch + 1) % args.batch_size == 0:
             style_images = torch.cat(style_images, dim=0)
             outputs = torch.cat(outputs, dim=0)
             o = torch.cat([style_images, outputs], dim=0)
             path = os.path.join(args.save_dir,
-                                '{}-{}-{}.png'.format(epoch, content_name[0], style_name[0]))
+                                'total-{}-{}-{}.png'.format(epoch, content_name[0], style_name[0]))
             torchvision.utils.save_image(o, path, nrow=args.batch_size)
             print('Save to [{}]'.format(path))
             outputs = []
