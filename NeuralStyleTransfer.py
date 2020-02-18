@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-18_maskguide_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='./experiments/02-18_gatys_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -408,7 +408,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         output_path = os.path.join(args.save_dir, f'{epoch}-{content_name[0]}-{style_name[0]}.png')
         torchvision.utils.save_image(out_img_hr, output_path)
-        print('Dones: [{}-{}].'.format(content_name[0], style_name[0]))
+        print('Done: [{}-{}].'.format(content_name[0], style_name[0]))
 
         epoch += 1
 # gcf().set_size_inches(10,10)
