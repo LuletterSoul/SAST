@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-19_lp2_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='./experiments/02-19_lp3_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -226,7 +226,7 @@ if torch.cuda.is_available():
 
 outputs = []
 style_images = []
-epoch= 1
+epoch = 1
 
 for content_image, content_image_hr, content_mask, content_name in content_loader:
     # print(content_name)
@@ -394,6 +394,9 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         style_images.append(style_image_hr)
         outputs.append(out_img_hr)
 
+        output_path = os.path.join(args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
+        torchvision.utils.save_image(out_img_hr.clone(), output_path)
+
         if (epoch + 1) % args.batch_size == 0:
             style_images = torch.cat(style_images, dim=0)
             outputs = torch.cat(outputs, dim=0)
@@ -405,8 +408,6 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             outputs = []
             style_images = []
 
-        output_path = os.path.join(args.save_dir, f'{epoch}-{content_name[0]}-{style_name[0]}.png')
-        torchvision.utils.save_image(out_img_hr, output_path)
         print('Done: [{}-{}].'.format(content_name[0], style_name[0]))
 
         epoch += 1
