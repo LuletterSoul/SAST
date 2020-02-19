@@ -31,10 +31,10 @@ parser.add_argument('--max_iter', type=int, default=500,
 parser.add_argument('--max_iter_hr', type=int, default=200,
                     help='Max iterations of optimization for high resolution image')
 
-parser.add_argument('--update_step', type=int, default=1,
+parser.add_argument('--update_step', type=int, default=50,
                     help='Update step of loss function and laplacian graph')
 
-parser.add_argument('--update_step_hr', type=int, default=1,
+parser.add_argument('--update_step_hr', type=int, default=50,
                     help='Update step of loss function and laplacian graph')
 
 parser.add_argument('--img_size', type=int, default=256,
@@ -83,16 +83,16 @@ save_dir.mkdir(exist_ok=True, parents=True)
 # img_size_hr = 800  # works for 8GB GPU, make larger if you have 12GB or more
 
 # these are layers settings:
-style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
+# style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
 # style_layers = ['r11','r21','r31','r41', 'r51']
 style_layers = []
 style_weights = []
 
-content_layers = ['r42']
-content_weights = [1e2]
-# content_layers = []
-# content_weights = []
+# content_layers = ['r42']
+# content_weights = [1e2]
+content_layers = []
+content_weights = []
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
@@ -226,7 +226,7 @@ if torch.cuda.is_available():
 
 outputs = []
 style_images = []
-epoch = 0
+epoch= 1
 
 for content_image, content_image_hr, content_mask, content_name in content_loader:
     # print(content_name)
@@ -298,15 +298,14 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 if n_iter[0] % show_iter == (show_iter - 1):
                     print('Iteration: %d, loss: %f' % (n_iter[0] + 1, loss.item()))
                 if n_iter[0] % args.update_step == (args.update_step - 1) and not M.laplacian_updated:
-                    pass
+                    # pass
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
-                    # M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                    # M.laplacian_s_feats)
+                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):], M.laplacian_s_feats)
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
-                    # print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
+                    print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
                     # print('Update laplacian graph and loss functions: %d' % (n_iter[0] + 1))
                 #             print([loss_layers[li] + ': ' +  str(l.data[0]) for li,l in enumerate(layer_losses)]) #loss of each layer
                 return loss
@@ -374,14 +373,14 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                     print('Iteration: %d, loss: %f' % (n_iter[0] + 1, loss.item()))
                 if n_iter[0] % args.update_step_hr == (args.update_step_hr - 1) and not M.laplacian_updated:
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
-                    # M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                    #                           M.laplacian_s_feats)
+                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
+                                              M.laplacian_s_feats)
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
-                    pass
+                    # pass
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
-                    # print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
+                    print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
                 # k          print([loss_layers[li] + ': ' +  str(l.data[0]) for li,l in enumerate(layer_losses)]) #loss of each layer
                 return loss
 
