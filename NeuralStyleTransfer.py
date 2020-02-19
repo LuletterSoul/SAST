@@ -84,10 +84,10 @@ save_dir.mkdir(exist_ok=True, parents=True)
 
 # these are layers settings:
 style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
-# style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
+style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
 # style_layers = ['r11','r21','r31','r41', 'r51']
 # style_layers = []
-style_weights = []
+# style_weights = []
 
 content_layers = ['r42']
 content_weights = [1e2]
