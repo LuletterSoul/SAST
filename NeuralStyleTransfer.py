@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-18_gatys_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='./experiments/02-19_gatys_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -86,7 +86,7 @@ save_dir.mkdir(exist_ok=True, parents=True)
 style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
 # style_layers = ['r11','r21','r31','r41', 'r51']
-style_layers = []
+# style_layers = []
 style_weights = []
 
 content_layers = ['r42']
@@ -96,8 +96,10 @@ content_weights = [1e2]
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
-laplacia_layers = ['r32']
-laplacia_weights = [1e5 / n ** 2 for n in [256]]
+# laplacia_layers = ['r32']
+laplacia_layers = []
+laplacia_weights = []
+# laplacia_weights = [1e5 / n ** 2 for n in [256]]
 # laplacia_weights = ['r32']
 
 # mutex_layers = ['r52']
