@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-19_lp3_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='./experiments/02-20_lpwc_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -89,10 +89,10 @@ save_dir.mkdir(exist_ok=True, parents=True)
 style_layers = []
 style_weights = []
 
-# content_layers = ['r42']
-# content_weights = [1e2]
-content_layers = []
-content_weights = []
+content_layers = ['r42']
+content_weights = [1e2]
+# content_layers = []
+# content_weights = []
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
