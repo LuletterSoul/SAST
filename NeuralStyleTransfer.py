@@ -53,7 +53,7 @@ parser.add_argument('--km', type=int, default=1,
 parser.add_argument('--batch_size', type=int, default=4)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-20_lpwc_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='./experiments/02-20_lpwc_cwe4_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
                     help='Directory to save the model')
 
 args = parser.parse_args()
@@ -90,7 +90,7 @@ style_layers = []
 style_weights = []
 
 content_layers = ['r42']
-content_weights = [1e2]
+content_weights = [1e4]
 # content_layers = []
 # content_weights = []
 
