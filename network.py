@@ -114,7 +114,8 @@ class ConsistencyLoss(nn.Module):
         weighted_dist_matrix = self.laplacian_graph * dist_matrix
         # print(
         #     f'Dist matrix total features: {weighted_dist_matrix.size()}')
-        return weighted_dist_matrix.mean()
+        # return weighted_dist_matrix.mean()
+        return weighted_dist_matrix.sum()
 
 
 def cal_dist(A, B):
