@@ -112,7 +112,9 @@ class ConsistencyLoss(nn.Module):
         dist_matrix = cal_dist(flat_input, flat_target)
         assert self.laplacian_graph.size() == dist_matrix.size()
         weighted_dist_matrix = self.laplacian_graph * dist_matrix
-        return weighted_dist_matrix.sum()
+        # print(
+        #     f'Dist matrix total features: {weighted_dist_matrix.size()}')
+        return weighted_dist_matrix.mean()
 
 
 def cal_dist(A, B):
@@ -129,9 +131,9 @@ def cal_dist(A, B):
     return dist
 
 
-def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None, s_mask=None):
-    # print(content_feat.size())
-    # print(style_feat.size())
+def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None, s_mask=None, use_mask=False):
+    print(f'Content feature map size: {content_feat.size()}')
+    print(f'Style feature map size: {style_feat.size()}')
     assert content_feat.size() == style_feat.size()
     N, C, H, W = content_feat.size()
     content_feat = content_feat.squeeze()
@@ -144,7 +146,8 @@ def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None,
         cosine_dist_matrix *= -1
 
     # print('Cosin dis matrix size: [{}]'.format(cosince_dist_matrix.size()))
-    if c_mask is not None and s_mask is not None:
+    if c_mask is not None and s_mask is not None and use_mask:
+        print('Use mask guide.')
         c_mask = F.interpolate(c_mask.float(), [H, W]).long().view(H * W, 1)
         s_mask = F.interpolate(s_mask.float(), [H, W]).long().view(1, H * W)
         # test = (c_mask == s_mask).long()
@@ -211,7 +214,7 @@ class FlatFolderDataset(data.Dataset):
 class Maintainer:
 
     def __init__(self, vgg, content_image, style_image, content_layers, style_layers,
-                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None) -> None:
+                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None, use_mask=False) -> None:
         self.vgg = vgg
         self.content_image = content_image
         self.style_image = style_image
@@ -225,6 +228,7 @@ class Maintainer:
         self.km = km
         self.device = device
         self.laplacian_updated = False
+        self.use_mask = use_mask
 
         self.build_training_components(content_image, style_image, content_layers, style_layers, laplacian_layers,
                                        c_mask, s_mask)
@@ -249,7 +253,7 @@ class Maintainer:
     #                   7) for idx in range(len(c_feats))]
     #     return laplacian_graphs
 
-    def build_graph(self, c_feats, s_feats, k=7, reverse=False, c_mask=None, s_mask=None):
+    def build_graph(self, c_feats, s_feats, k, reverse=False, c_mask=None, s_mask=None):
         """
         cal neigborhood  graph
         :param c_feats:
@@ -260,7 +264,7 @@ class Maintainer:
         assert len(c_feats) == len(s_feats)
         graph = [
             cal_graph(c_feats[idx], s_feats[idx], self.device,
-                      7, reverse, c_mask, s_mask) for idx in range(len(c_feats))]
+                      k, reverse, c_mask, s_mask, self.use_mask) for idx in range(len(c_feats))]
 
         return graph
 
@@ -298,11 +302,11 @@ class Maintainer:
             self.loss_fns[:index] += [ConsistencyLoss(l) for
                                       l in mutex_graph]
 
-    def update_loss_fns_with_lg(self, c_feats, s_feats):
+    def update_loss_fns_with_lg(self, c_feats, s_feats, k):
         for l in self.laplacian_graph:
             del l
         c_feats = [A.detach() for A in c_feats]
         s_feats = [A.detach() for A in s_feats]
-        self.laplacian_graph = self.build_graph(c_feats, s_feats)
+        self.laplacian_graph = self.build_graph(c_feats, s_feats, k)
         self.loss_fns = self.build_loss_fns()
         torch.cuda.empty_cache()

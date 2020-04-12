@@ -42,24 +42,32 @@ parser.add_argument('--img_size', type=int, default=256,
 parser.add_argument('--img_size_hr', type=int, default=512,
                     help='Image size of high resolution')
 
-parser.add_argument('--kl', type=int, default=7,
+parser.add_argument('--kl', type=int, default=50,
                     help='K neighborhoods selection for laplacian graph')
 parser.add_argument('--km', type=int, default=1,
-
                     help='K neighborhoods selection for mutex graph')
 # parser.add_argument('--sigma', type=int, default=10,
 #                     help='Weight of Variance loss ')
 
 parser.add_argument('--batch_size', type=int, default=4)
+parser.add_argument('--use_mask', type=bool, default=False)
+parser.add_argument('--lw', type=int, default=200)
+parser.add_argument('--cw', type=int, default=200)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-19_lp3_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='exp/03-29_lw200_kl50',
                     help='Directory to save the model')
 
+parser.add_argument('--opt_pro',
+                    default='process',
+                    help='Directory to save the model')
 args = parser.parse_args()
 
 save_dir = Path(args.save_dir)
 save_dir.mkdir(exist_ok=True, parents=True)
+
+process_dir = args.opt_pro / save_dir
+process_dir.mkdir(exist_ok=True, parents=True)
 
 # pre and post processing for images
 # img_size = 256
@@ -70,11 +78,6 @@ save_dir.mkdir(exist_ok=True, parents=True)
 # these are layers settings:
 # style_layers = []
 
-
-args = parser.parse_args()
-
-save_dir = Path(args.save_dir)
-save_dir.mkdir(exist_ok=True, parents=True)
 
 # pre and post processing for images
 # img_size = 256
@@ -89,16 +92,22 @@ save_dir.mkdir(exist_ok=True, parents=True)
 style_layers = []
 style_weights = []
 
+alpha = args.cw / (args.cw + args.lw)
+beta = args.lw / (args.cw + args.lw)
 # content_layers = ['r42']
-# content_weights = [1e2]
-content_layers = []
-content_weights = []
+# content_weights = [1e6 * 6]
+# content_layers = []
+# content_weights = []
+content_layers = ['r42']
+content_weights = [alpha]
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
 laplacia_layers = ['r32']
-laplacia_weights = [1e5 / n ** 2 for n in [256]]
+# laplacia_weights = [1e5 / n ** 2 for n in [256]]
+# laplacia_weights = [args.lw]
 # laplacia_weights = ['r32']
+laplacia_weights = [beta]
 
 # mutex_layers = ['r52']
 mutex_layers = []
@@ -276,7 +285,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         # targets = style_targets + content_targets + laplacia_targets
         M = Maintainer(vgg, content_image, style_image, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask)
+                       args.km, content_mask, style_mask, args.use_mask)
 
         # %%
 
@@ -293,6 +302,9 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 torch.cuda.empty_cache()
                 loss = sum(layer_losses)
                 loss.backward()
+                # tmp_out_img = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
+                # torchvision.utils.save_image(tmp_out_img, os.path.join(str(process_dir),
+                #                                                        f'{content_name[0]}-{style_name[0]}-{n_iter[0]}_lr.png'))
                 n_iter[0] += 1
                 # print loss
                 if n_iter[0] % show_iter == (show_iter - 1):
@@ -302,7 +314,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
-                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):], M.laplacian_s_feats)
+                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):], M.laplacian_s_feats, args.kl)
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
                     print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
@@ -339,7 +351,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         M = Maintainer(vgg, content_image_hr, style_image_hr, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask)
+                       args.km, content_mask, style_mask, args.use_mask)
 
         # now initialise with upsampled lowres result
         opt_img = prep_hr(out_img).unsqueeze(0)
@@ -366,6 +378,10 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 # loss = sum(layer_losses)
                 torch.cuda.empty_cache()
                 loss.backward()
+
+                # tmp_out_img = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
+                # torchvision.utils.save_image(tmp_out_img, os.path.join(str(process_dir),
+                #                                                        f'{content_name[0]}-{style_name[0]}-{n_iter[0]}_hr.png'))
                 n_iter[0] += 1
                 # print loss
                 if n_iter[0] % show_iter == (show_iter - 1):
@@ -373,8 +389,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                     print('Iteration: %d, loss: %f' % (n_iter[0] + 1, loss.item()))
                 if n_iter[0] % args.update_step_hr == (args.update_step_hr - 1) and not M.laplacian_updated:
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
-                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                                              M.laplacian_s_feats)
+                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):], M.laplacian_s_feats, args.kl)
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
                     # pass
