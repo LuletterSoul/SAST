@@ -13,14 +13,15 @@ import torchvision
 from torchvision import transforms
 from network import *
 import argparse
+import cv2
 
 # %%
 
 parser = argparse.ArgumentParser()
 # Basic options
-parser.add_argument('--content_dir', type=str, default='images/contents',
+parser.add_argument('--content_dir', type=str, default='images/contents_0420',
                     help='Directory path to a batch of content images')
-parser.add_argument('--style_dir', type=str, default='images/styles',
+parser.add_argument('--style_dir', type=str, default='images/styles_0420',
                     help='Directory path to a batch of style images')
 parser.add_argument('--content_mask_dir', type=str, default='images/content_masks',
                     help='Directory path to a batch of content masks')
@@ -51,16 +52,23 @@ parser.add_argument('--km', type=int, default=1,
 
 parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--use_mask', type=bool, default=False)
-parser.add_argument('--lw', type=int, default=200)
-parser.add_argument('--cw', type=int, default=200)
+parser.add_argument('--lw', type=float, default=200)
+parser.add_argument('--cw', type=float, default=200)
+parser.add_argument('--content_src', type=str, default='datasets/04191521_1000_100_1/warp')
+parser.add_argument('--content_list', type=str, default=None)
 # training options0
 parser.add_argument('--save_dir',
                     default='exp/03-29_lw200_kl50',
                     help='Directory to save the model')
 
+parser.add_argument('--gbp',
+                    action='store_true',
+                    help='Group by person')
+
 parser.add_argument('--opt_pro',
                     default='process',
                     help='Directory to save the model')
+
 args = parser.parse_args()
 
 save_dir = Path(args.save_dir)
@@ -68,6 +76,17 @@ save_dir.mkdir(exist_ok=True, parents=True)
 
 process_dir = args.opt_pro / save_dir
 process_dir.mkdir(exist_ok=True, parents=True)
+if args.content_list is not None:
+    with open(args.content_list, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            name, idx = line.split('\t')
+            img_path = os.path.join(args.content_src, name.replace(' ', '_'), idx.replace('\n', '') + '.png')
+            img = cv2.imread(img_path)
+            if not os.path.exists(args.content_dir):
+                os.mkdir(args.content_dir)
+            if img is not None:
+                cv2.imwrite(os.path.join(args.content_dir, f'{name}_{idx}.png').replace('\n', ''), img)
 
 # pre and post processing for images
 # img_size = 256
@@ -194,10 +213,10 @@ style_dataset = FlatFolderDataset(args.style_dir, args.style_mask_dir, prep, pre
 
 content_loader = data.DataLoader(
     content_dataset, batch_size=1, shuffle=False,
-    num_workers=0)
+    num_workers=4)
 style_loader = data.DataLoader(
     style_dataset, batch_size=1, shuffle=False,
-    num_workers=0)
+    num_workers=4)
 
 # content_hr_loader = data.DataLoader(
 #     content_hr_dataset, batch_size=1, shuffle=False,
@@ -240,6 +259,18 @@ epoch = 1
 for content_image, content_image_hr, content_mask, content_name in content_loader:
     # print(content_name)
     for style_image, style_image_hr, style_mask, style_name in style_loader:
+        if not args.gbp:
+            output_path = os.path.join(args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
+        else:
+            person_name, extention = os.path.splitext(content_name[0])
+            output_dir = os.path.join(args.save_dir, person_name).replace(' ', '_')
+            if not os.path.exists(output_dir):
+                Path(output_dir).mkdir(exist_ok=True, parents=True)
+            output_path = os.path.join(output_dir, f'{content_name[0]}-{style_name[0]}.png').replace(' ', '_')
+
+        if os.path.exists(output_path):
+            print(f'Stylization exist in {output_path}')
+            continue
         content_image = content_image.to(device)
         content_image_hr = content_image_hr.to(device)
 
@@ -409,7 +440,6 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         style_images.append(style_image_hr)
         outputs.append(out_img_hr)
 
-        output_path = os.path.join(args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
         torchvision.utils.save_image(out_img_hr.clone(), output_path)
 
         if (epoch + 1) % args.batch_size == 0:
@@ -422,7 +452,6 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             print('Save to [{}]'.format(path))
             outputs = []
             style_images = []
-
         print('Done: [{}-{}].'.format(content_name[0], style_name[0]))
 
         epoch += 1

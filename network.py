@@ -88,11 +88,12 @@ class GramMSELoss(nn.Module):
 
 class ConsistencyLoss(nn.Module):
 
-    def __init__(self, laplacian_graph, mask=None) -> None:
+    def __init__(self, laplacian_graph, k, mask=None) -> None:
         super().__init__()
         self.mask = mask
         self.consistency_matrix = None
         self.laplacian_graph = laplacian_graph
+        self.k = k
 
     def forward(self, input, target):
         # size = input.size()[-2:]
@@ -114,7 +115,8 @@ class ConsistencyLoss(nn.Module):
         weighted_dist_matrix = self.laplacian_graph * dist_matrix
         # print(
         #     f'Dist matrix total features: {weighted_dist_matrix.size()}')
-        return weighted_dist_matrix.mean()
+        # return weighted_dist_matrix.mean()
+        return weighted_dist_matrix.sum() / (H * W * self.k)
 
 
 def cal_dist(A, B):
@@ -197,8 +199,12 @@ class FlatFolderDataset(data.Dataset):
         path = str(self.paths[index])
         idx = os.path.splitext(os.path.basename(path))[0]
         img = Image.open(path).convert('RGB')
-        mask = Image.open(os.path.join(self.mask_root, idx + '.png'))
-        mask = self.mask_tf(mask)
+        mask_path = os.path.join(self.mask_root, idx + '.png')
+        if not os.path.exists(mask_path):
+            mask = 0
+        else:
+            mask = Image.open(mask_path)
+            mask = self.mask_tf(mask)
         img_low = self.tf1(img)
         img_high = self.tf2(img)
 
@@ -241,7 +247,7 @@ class Maintainer:
 
     def build_loss_fns(self):
         loss_fns = [GramMSELoss()] * len(self.style_layers) + [nn.MSELoss()] * len(self.content_layers) + [
-            ConsistencyLoss(l) for
+            ConsistencyLoss(l, self.kl) for
             l in self.laplacian_graph]
         if torch.cuda.is_available():
             loss_fns = [loss_fn.cuda() for loss_fn in loss_fns]
