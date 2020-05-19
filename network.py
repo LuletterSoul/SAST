@@ -194,12 +194,12 @@ class FlatFolderDataset(data.Dataset):
         path = str(self.paths[index])
         idx = os.path.splitext(os.path.basename(path))[0]
         img = Image.open(path).convert('RGB')
-        mask = Image.open(os.path.join(self.mask_root, idx + '.png'))
-        mask = self.mask_tf(mask)
+        #mask = Image.open(os.path.join(self.mask_root, idx + '.png'))
+        #mask = self.mask_tf(mask)
         img_low = self.tf1(img)
         img_high = self.tf2(img)
 
-        return img_low, img_high, mask, idx
+        return img_low, img_high, 0, idx
 
     def __len__(self):
         return len(self.paths)
