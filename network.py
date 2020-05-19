@@ -88,12 +88,13 @@ class GramMSELoss(nn.Module):
 
 class ConsistencyLoss(nn.Module):
 
-    def __init__(self, laplacian_graph, k, mask=None) -> None:
+    def __init__(self, laplacian_graph, k, mask=None, mean='mean') -> None:
         super().__init__()
         self.mask = mask
         self.consistency_matrix = None
         self.laplacian_graph = laplacian_graph
         self.k = k
+        self.mean = mean
 
     def forward(self, input, target):
         # size = input.size()[-2:]
@@ -116,7 +117,10 @@ class ConsistencyLoss(nn.Module):
         # print(
         #     f'Dist matrix total features: {weighted_dist_matrix.size()}')
         # return weighted_dist_matrix.mean()
-        return weighted_dist_matrix.sum() / (H * W * self.k)
+        if self.mean == 'mean':
+            return weighted_dist_matrix.sum() / (H * W * self.k)
+        else:
+            return weighted_dist_matrix.mean()
 
 
 def cal_dist(A, B):
@@ -220,7 +224,7 @@ class FlatFolderDataset(data.Dataset):
 class Maintainer:
 
     def __init__(self, vgg, content_image, style_image, content_layers, style_layers,
-                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None, use_mask=False) -> None:
+                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None, use_mask=False, mean='mean') -> None:
         self.vgg = vgg
         self.content_image = content_image
         self.style_image = style_image
@@ -235,6 +239,7 @@ class Maintainer:
         self.device = device
         self.laplacian_updated = False
         self.use_mask = use_mask
+        self.mean = mean
 
         self.build_training_components(content_image, style_image, content_layers, style_layers, laplacian_layers,
                                        c_mask, s_mask)
@@ -247,7 +252,7 @@ class Maintainer:
 
     def build_loss_fns(self):
         loss_fns = [GramMSELoss()] * len(self.style_layers) + [nn.MSELoss()] * len(self.content_layers) + [
-            ConsistencyLoss(l, self.kl) for
+            ConsistencyLoss(l, self.kl, mean=self.mean) for
             l in self.laplacian_graph]
         if torch.cuda.is_available():
             loss_fns = [loss_fn.cuda() for loss_fn in loss_fns]

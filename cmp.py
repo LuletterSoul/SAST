@@ -33,16 +33,33 @@ content_dir = 'images/contents_0421_k'
 #                  'exp/0428_cw1_lw30_ups50', 'exp/0428_cw1_lw30_ups40',
 #                  'exp/0428_cw1_lw30_ups30',
 #                  'exp/0428_cw1_lw30_ups20', 'exp/0428_cw1_lw30_ups10', 'exp/0428_cw1_lw30_ups1']]
-stylizations = [['exp/0428_cw1_lw30_nups', 'exp/0428_cw1_lw30_ups200', 'exp/0428_cw1_lw30_ups100',
-                 'exp/0428_cw1_lw30_ups50', 'exp/0428_cw1_lw30_ups40',
-                 'exp/0428_cw1_lw30_ups30',
-                 'exp/0428_cw1_lw30_ups20', 'exp/0428_cw1_lw30_ups10', 'exp/0428_cw1_lw30_ups1']]
+# stylizations = [
+#     ['exp/0428_cw1_lw0.1_nups', 'exp/0428_cw1_lw1_nups', 'exp/0428_cw1_lw10_nups', 'exp/0428_cw1_lw100_nups',
+#      'exp/0428_cw1_lw1000_nups', 'exp/0428_cw1_lw10000_nups', 'exp/0428_cw1_lw10000_nups']]
+
+
+# stylizations = [
+#     ['exp/0429_cw0_lw1_nups', 'exp/0429_cw0_lw1_50ups', 'exp/0429_cw0_lw1_40ups', 'exp/0429_cw0_lw1_30ups'
+#         , 'exp/0429_cw0_lw1_20ups'
+#         , 'exp/0429_cw0_lw1_10ups']]
+# stylizations = [
+#     ['exp/0429_cw0_lw1','exp/0429_cw0_lw1000']]
+stylizations = [
+['exp/0428_cw1_lw0.1', 'exp/0428_cw1_lw0.2', 'exp/0428_cw1_lw0.3', 'exp/0428_cw1_lw0.4', 'exp/0428_cw1_lw0.5',
+'exp/0428_cw1_lw0.6', 'exp/0428_cw1_lw0.7', 'exp/0428_cw1_lw0.8', 'exp/0428_cw1_lw0.9', 'exp/0428_cw1_lw1_nups']]
+# stylizations = [
+# ['exp/0428_cw1_lw0.001','exp/0428_cw1_lw0.01','exp/0428_cw1_lw0.1', 'exp/0428_cw1_lw0.3', 'exp/0428_cw1_lw0.5',
+#  'exp/0428_cw1_lw0.7', 'exp/0428_cw1_lw0.9', 'exp/0428_cw1_lw1_nups']]
+
 # stylizations = ['exp/0427_cw1_lw30_k50_ups50_it500',
 #                 'exp/0427_cw1_lw30_k50_ups50_it400', 'exp/0427_cw1_lw30_k50_ups50_it300', 'exp/0427_cw1_lw30_k50_ups50_it200',
 #                 'exp/0427_cw1_lw30_k50_ups50_it100', 'exp/0427_cw1_lw30_k50_ups50_it50', 'exp/0427_cw1_lw30_k50_ups50_it40',
 #                 'exp/0427_cw1_lw30_k50_ups50_it30', 'exp/0427_cw1_lw30_k50_ups50_it20']
 # output_path = Path('output/contents_0427_it_cmp')
-output_path = Path('output/contents_0428_ups_cmp')
+# output_path = Path('output/contents_0429_cw0_lw1-1000_cmp')
+# output_path = Path('outpu1/contents_0429_cw0_lw1_ups_cmp')
+output_path = Path('output/contents_0429_cl0.01-1_cmp')
+
 if not output_path.exists():
     output_path.mkdir(exist_ok=True, parents=True)
 

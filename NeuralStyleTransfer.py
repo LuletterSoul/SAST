@@ -15,7 +15,6 @@ from network import *
 import argparse
 import cv2
 
-# %%
 
 parser = argparse.ArgumentParser()
 # Basic options
@@ -56,6 +55,7 @@ parser.add_argument('--lw', type=float, default=200)
 parser.add_argument('--cw', type=float, default=200)
 parser.add_argument('--content_src', type=str, default='datasets/04191521_1000_100_1/warp')
 parser.add_argument('--content_list', type=str, default=None)
+parser.add_argument('--mean', default='mean', type=str)
 # training options0
 parser.add_argument('--save_dir',
                     default='exp/03-29_lw200_kl50',
@@ -113,6 +113,7 @@ style_weights = []
 
 alpha = args.cw / (args.cw + args.lw)
 beta = args.lw / (args.cw + args.lw)
+# beta = args.lw
 # content_layers = ['r42']
 # content_weights = [1e6 * 6]
 # content_layers = []
@@ -316,7 +317,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         # targets = style_targets + content_targets + laplacia_targets
         M = Maintainer(vgg, content_image, style_image, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask, args.use_mask)
+                       args.km, content_mask, style_mask, args.use_mask, args.mean)
 
         # %%
 
@@ -382,7 +383,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         M = Maintainer(vgg, content_image_hr, style_image_hr, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask, args.use_mask)
+                       args.km, content_mask, style_mask, args.use_mask,args.mean)
 
         # now initialise with upsampled lowres result
         opt_img = prep_hr(out_img).unsqueeze(0)
