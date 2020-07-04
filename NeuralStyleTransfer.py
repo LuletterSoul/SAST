@@ -15,6 +15,8 @@ from network import *
 import argparse
 import cv2
 
+import time
+
 parser = argparse.ArgumentParser()
 # Basic options
 parser.add_argument('--content_dir', type=str, default='images/contents_0420',
@@ -259,9 +261,13 @@ outputs = []
 style_images = []
 epoch = 1
 
+total_time = 0
+avg_time = 0
+
 for content_image, content_image_hr, content_mask, content_name in content_loader:
     # print(content_name)
     for style_image, style_image_hr, style_mask, style_name in style_loader:
+
         if not args.gbp:
             output_path = os.path.join(args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
         else:
@@ -274,6 +280,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         if os.path.exists(output_path):
             print(f'Stylization exist in {output_path}')
             continue
+        start = time.time()
         content_image = content_image.to(device)
         content_image_hr = content_image_hr.to(device)
 
@@ -436,6 +443,10 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
             optimizer.step(closure)
 
+        end = time.time()
+        total_time += end - start
+        avg_time = total_time / epoch
+        print(f'Avg time {round(avg_time, 2)}')
         # display result
         out_img_hr = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
         style_image_hr = post_tensor(style_image_hr.data.cpu().squeeze()).unsqueeze(0)
