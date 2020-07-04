@@ -13,6 +13,7 @@ import torchvision
 from torchvision import transforms
 from network import *
 import argparse
+import time
 
 # %%
 
@@ -230,9 +231,13 @@ outputs = []
 style_images = []
 epoch = 1
 
+total_time = 0
+avg_time = 0
+
 for content_image, content_image_hr, content_mask, content_name in content_loader:
     # print(content_name)
     for style_image, style_image_hr, style_mask, style_name in style_loader:
+        start = time.time()
         content_image = content_image.to(device)
         content_image_hr = content_image_hr.to(device)
 
@@ -389,6 +394,11 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
 
             optimizer.step(closure)
+
+        end = time.time()
+        total_time += end - start
+        avg_time = total_time / epoch
+        print(f'Avg time {round(avg_time, 2)}')
 
         # display result
         out_img_hr = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
