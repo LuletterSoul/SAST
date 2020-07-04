@@ -15,7 +15,6 @@ from network import *
 import argparse
 import cv2
 
-
 parser = argparse.ArgumentParser()
 # Basic options
 parser.add_argument('--content_dir', type=str, default='images/contents_0420',
@@ -53,6 +52,7 @@ parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--use_mask', type=bool, default=False)
 parser.add_argument('--lw', type=float, default=200)
 parser.add_argument('--cw', type=float, default=200)
+parser.add_argument('--sw', type=float, default=1)
 parser.add_argument('--content_src', type=str, default='datasets/04191521_1000_100_1/warp')
 parser.add_argument('--content_list', type=str, default=None)
 parser.add_argument('--mean', default='mean', type=str)
@@ -107,6 +107,8 @@ if args.content_list is not None:
 # these are layers settings:
 # style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
+# style_weights = [1, 1, 1, 1, 1]
+# style_weights = [args.sw] * 5
 # style_layers = ['r11','r21','r31','r41', 'r51']
 style_layers = []
 style_weights = []
@@ -383,7 +385,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         M = Maintainer(vgg, content_image_hr, style_image_hr, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask, args.use_mask,args.mean)
+                       args.km, content_mask, style_mask, args.use_mask, args.mean)
 
         # now initialise with upsampled lowres result
         opt_img = prep_hr(out_img).unsqueeze(0)
