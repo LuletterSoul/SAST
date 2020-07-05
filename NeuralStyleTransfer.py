@@ -111,7 +111,7 @@ if args.content_list is not None:
 # style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
 # style_weights = [1, 1, 1, 1, 1]
 style_weights = [args.sw] * 5
-style_layers = ['r11','r21','r31','r41', 'r51']
+style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_layers = []
 # style_weights = []
 
