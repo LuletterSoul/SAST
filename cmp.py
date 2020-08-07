@@ -15,8 +15,8 @@ import os
 import numpy as np
 from pathlib import Path
 
-style_dir = 'images/styles_0421_k'
-content_dir = 'images/contents_0421_k'
+style_dir = 'images/styles_0705'
+content_dir = 'images/contents_0705'
 # style_dir = 'images/styles_0421_k'
 # content_dir = 'images/contents_0421_k'
 # stylizations = ['exp/0421_cw1_lw0.1_kl50', 'exp/0421_cw1_lw1_kl50', 'exp/0421_cw1_lw10_kl50', 'exp/0421_cw1_lw100_kl50',
@@ -44,9 +44,15 @@ content_dir = 'images/contents_0421_k'
 #         , 'exp/0429_cw0_lw1_10ups']]
 # stylizations = [
 #     ['exp/0429_cw0_lw1','exp/0429_cw0_lw1000']]
+# stylizations = [
+#     ['exp/0705_gatys', 'exp/0705_cw1_lw1_sw0_k1', 'exp/0705_cw1_lw1_ups50', 'exp/0705_cw1_lw1_sw0.001_k1',
+#      'exp/0705_cw1_lw1_sw0.002_k1', 'exp/0705_cw1_lw1_sw0.003_k1', 'exp/0705_cw1_lw1_sw0.01_k1',
+#      'exp/0705_cw1_lw1_sw0.05_k1', 'exp/0705_cw1_lw1_sw0.1_k1']]
+
 stylizations = [
-['exp/0428_cw1_lw0.1', 'exp/0428_cw1_lw0.2', 'exp/0428_cw1_lw0.3', 'exp/0428_cw1_lw0.4', 'exp/0428_cw1_lw0.5',
-'exp/0428_cw1_lw0.6', 'exp/0428_cw1_lw0.7', 'exp/0428_cw1_lw0.8', 'exp/0428_cw1_lw0.9', 'exp/0428_cw1_lw1_nups']]
+    ['exp/0705_gatys', 'exp/0705_cw1_lw1_sw0_k1', 'exp/0705_cw1_lw1_ups50', 'exp/0705_cw1_lw0.1_sw0.002_k1',
+     'exp/0705_cw1_lw0.5_sw0.002_k1', 'exp/0705_cw1_lw10_sw0.002_k1']
+]
 # stylizations = [
 # ['exp/0428_cw1_lw0.001','exp/0428_cw1_lw0.01','exp/0428_cw1_lw0.1', 'exp/0428_cw1_lw0.3', 'exp/0428_cw1_lw0.5',
 #  'exp/0428_cw1_lw0.7', 'exp/0428_cw1_lw0.9', 'exp/0428_cw1_lw1_nups']]
@@ -58,7 +64,7 @@ stylizations = [
 # output_path = Path('output/contents_0427_it_cmp')
 # output_path = Path('output/contents_0429_cw0_lw1-1000_cmp')
 # output_path = Path('outpu1/contents_0429_cw0_lw1_ups_cmp')
-output_path = Path('output/contents_0429_cl0.01-1_cmp')
+output_path = Path('output/0705_ST_cmp_2')
 
 if not output_path.exists():
     output_path.mkdir(exist_ok=True, parents=True)
