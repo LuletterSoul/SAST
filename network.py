@@ -88,11 +88,13 @@ class GramMSELoss(nn.Module):
 
 class ConsistencyLoss(nn.Module):
 
-    def __init__(self, laplacian_graph, mask=None) -> None:
+    def __init__(self, laplacian_graph, k, mask=None, mean='mean') -> None:
         super().__init__()
         self.mask = mask
         self.consistency_matrix = None
         self.laplacian_graph = laplacian_graph
+        self.k = k
+        self.mean = mean
 
     def forward(self, input, target):
         # size = input.size()[-2:]
@@ -112,7 +114,13 @@ class ConsistencyLoss(nn.Module):
         dist_matrix = cal_dist(flat_input, flat_target)
         assert self.laplacian_graph.size() == dist_matrix.size()
         weighted_dist_matrix = self.laplacian_graph * dist_matrix
-        return weighted_dist_matrix.sum()
+        # print(
+        #     f'Dist matrix total features: {weighted_dist_matrix.size()}')
+        # return weighted_dist_matrix.mean()
+        if self.mean == 'mean':
+            return weighted_dist_matrix.sum() / (H * W * self.k)
+        else:
+            return weighted_dist_matrix.mean()
 
 
 def cal_dist(A, B):
@@ -129,41 +137,45 @@ def cal_dist(A, B):
     return dist
 
 
-def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None, s_mask=None):
-    # print(content_feat.size())
-    # print(style_feat.size())
+def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None, s_mask=None, use_mask=False):
+    print(f'Content feature map size: {content_feat.size()}')
+    print(f'Style feature map size: {style_feat.size()}')
     assert content_feat.size() == style_feat.size()
     N, C, H, W = content_feat.size()
     content_feat = content_feat.squeeze()
     style_feat = style_feat.squeeze()
     n_content_feat = F.normalize(content_feat, dim=0).view(C, -1)
     n_style_feat = F.normalize(style_feat, dim=0).view(C, -1)
-    cosince_dist_matrix = torch.mm(n_content_feat.t(), n_style_feat)
+    cosine_dist_matrix = torch.mm(n_content_feat.t(), n_style_feat)
+    mask = torch.ones(H * W, H * W, dtype=n_content_feat.dtype).to(device)
     if reverse:
-        cosince_dist_matrix *= -1
+        cosine_dist_matrix *= -1
+
     # print('Cosin dis matrix size: [{}]'.format(cosince_dist_matrix.size()))
-    if c_mask is not None and s_mask is not None:
+    if c_mask is not None and s_mask is not None and use_mask:
+        print('Use mask guide.')
         c_mask = F.interpolate(c_mask.float(), [H, W]).long().view(H * W, 1)
         s_mask = F.interpolate(s_mask.float(), [H, W]).long().view(1, H * W)
-        test = (c_mask == s_mask).long()
-        print(torch.sum(test))
-        graph = (c_mask == s_mask).type_as(n_content_feat)
-    else:
-        graph = torch.zeros(H * W, H * W, dtype=n_content_feat.dtype).to(device)
-        index = torch.topk(cosince_dist_matrix, k, 0)[1]
-        value = torch.ones(k, H * W, dtype=n_content_feat.dtype).to(device)
-        graph.scatter_(0, index, value)  # set weight matrix
+        # test = (c_mask == s_mask).long()
+        # print(torch.sum(test))
+        mask = (c_mask == s_mask).type_as(n_content_feat)
 
-        del index
-        del value
+    cosine_dist_matrix *= mask
+    graph = torch.zeros(H * W, H * W, dtype=n_content_feat.dtype).to(device)
+    index = torch.topk(cosine_dist_matrix, k, 0)[1]
+    value = torch.ones(k, H * W, dtype=n_content_feat.dtype).to(device)
+    graph.scatter_(0, index, value)  # set weight matrix
 
-        index = torch.topk(cosince_dist_matrix, k, 1)[1]
-        value = torch.ones(H * W, k, dtype=n_content_feat.dtype).to(device)
-        graph.scatter_(1, index, value)  # set weight matrix
+    del index
+    del value
 
-        del index
-        del value
-        del cosince_dist_matrix
+    index = torch.topk(cosine_dist_matrix, k, 1)[1]
+    value = torch.ones(H * W, k, dtype=n_content_feat.dtype).to(device)
+    graph.scatter_(1, index, value)  # set weight matrix
+
+    del index
+    del value
+    del cosine_dist_matrix
 
     return graph
 
@@ -191,8 +203,12 @@ class FlatFolderDataset(data.Dataset):
         path = str(self.paths[index])
         idx = os.path.splitext(os.path.basename(path))[0]
         img = Image.open(path).convert('RGB')
-        mask = Image.open(os.path.join(self.mask_root, idx + '.png'))
-        mask = self.mask_tf(mask)
+        mask_path = os.path.join(self.mask_root, idx + '.png')
+        if not os.path.exists(mask_path):
+            mask = 0
+        else:
+            mask = Image.open(mask_path)
+            mask = self.mask_tf(mask)
         img_low = self.tf1(img)
         img_high = self.tf2(img)
 
@@ -208,7 +224,7 @@ class FlatFolderDataset(data.Dataset):
 class Maintainer:
 
     def __init__(self, vgg, content_image, style_image, content_layers, style_layers,
-                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None) -> None:
+                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None, use_mask=False, mean='mean') -> None:
         self.vgg = vgg
         self.content_image = content_image
         self.style_image = style_image
@@ -222,6 +238,8 @@ class Maintainer:
         self.km = km
         self.device = device
         self.laplacian_updated = False
+        self.use_mask = use_mask
+        self.mean = mean
 
         self.build_training_components(content_image, style_image, content_layers, style_layers, laplacian_layers,
                                        c_mask, s_mask)
@@ -234,7 +252,7 @@ class Maintainer:
 
     def build_loss_fns(self):
         loss_fns = [GramMSELoss()] * len(self.style_layers) + [nn.MSELoss()] * len(self.content_layers) + [
-            ConsistencyLoss(l) for
+            ConsistencyLoss(l, self.kl, mean=self.mean) for
             l in self.laplacian_graph]
         if torch.cuda.is_available():
             loss_fns = [loss_fn.cuda() for loss_fn in loss_fns]
@@ -246,7 +264,7 @@ class Maintainer:
     #                   7) for idx in range(len(c_feats))]
     #     return laplacian_graphs
 
-    def build_graph(self, c_feats, s_feats, k=7, reverse=False, c_mask=None, s_mask=None):
+    def build_graph(self, c_feats, s_feats, k, reverse=False, c_mask=None, s_mask=None):
         """
         cal neigborhood  graph
         :param c_feats:
@@ -257,7 +275,7 @@ class Maintainer:
         assert len(c_feats) == len(s_feats)
         graph = [
             cal_graph(c_feats[idx], s_feats[idx], self.device,
-                      7, reverse, c_mask, s_mask) for idx in range(len(c_feats))]
+                      k, reverse, c_mask, s_mask, self.use_mask) for idx in range(len(c_feats))]
 
         return graph
 
@@ -295,11 +313,11 @@ class Maintainer:
             self.loss_fns[:index] += [ConsistencyLoss(l) for
                                       l in mutex_graph]
 
-    def update_loss_fns_with_lg(self, c_feats, s_feats):
+    def update_loss_fns_with_lg(self, c_feats, s_feats, k):
         for l in self.laplacian_graph:
             del l
         c_feats = [A.detach() for A in c_feats]
         s_feats = [A.detach() for A in s_feats]
-        self.laplacian_graph = self.build_graph(c_feats, s_feats)
+        self.laplacian_graph = self.build_graph(c_feats, s_feats, k)
         self.loss_fns = self.build_loss_fns()
         torch.cuda.empty_cache()

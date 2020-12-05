@@ -13,14 +13,15 @@ import torchvision
 from torchvision import transforms
 from network import *
 import argparse
+import cv2
 
-# %%
+import time
 
 parser = argparse.ArgumentParser()
 # Basic options
-parser.add_argument('--content_dir', type=str, default='images/contents',
+parser.add_argument('--content_dir', type=str, default='images/contents_0420',
                     help='Directory path to a batch of content images')
-parser.add_argument('--style_dir', type=str, default='images/styles',
+parser.add_argument('--style_dir', type=str, default='images/styles_0420',
                     help='Directory path to a batch of style images')
 parser.add_argument('--content_mask_dir', type=str, default='images/content_masks',
                     help='Directory path to a batch of content masks')
@@ -31,10 +32,10 @@ parser.add_argument('--max_iter', type=int, default=500,
 parser.add_argument('--max_iter_hr', type=int, default=200,
                     help='Max iterations of optimization for high resolution image')
 
-parser.add_argument('--update_step', type=int, default=1,
+parser.add_argument('--update_step', type=int, default=50,
                     help='Update step of loss function and laplacian graph')
 
-parser.add_argument('--update_step_hr', type=int, default=1,
+parser.add_argument('--update_step_hr', type=int, default=50,
                     help='Update step of loss function and laplacian graph')
 
 parser.add_argument('--img_size', type=int, default=256,
@@ -42,24 +43,52 @@ parser.add_argument('--img_size', type=int, default=256,
 parser.add_argument('--img_size_hr', type=int, default=512,
                     help='Image size of high resolution')
 
-parser.add_argument('--kl', type=int, default=7,
+parser.add_argument('--kl', type=int, default=50,
                     help='K neighborhoods selection for laplacian graph')
 parser.add_argument('--km', type=int, default=1,
-
                     help='K neighborhoods selection for mutex graph')
 # parser.add_argument('--sigma', type=int, default=10,
 #                     help='Weight of Variance loss ')
 
 parser.add_argument('--batch_size', type=int, default=4)
+parser.add_argument('--use_mask', type=bool, default=False)
+parser.add_argument('--lw', type=float, default=200)
+parser.add_argument('--cw', type=float, default=200)
+parser.add_argument('--sw', type=float, default=0)
+parser.add_argument('--content_src', type=str, default='datasets/04191521_1000_100_1/warp')
+parser.add_argument('--content_list', type=str, default=None)
+parser.add_argument('--mean', default='mean', type=str)
 # training options0
 parser.add_argument('--save_dir',
-                    default='./experiments/02-18_maskguide_cw1e2_lw1e5_iter500_200_512_ul50_uh50_kl7_km1',
+                    default='exp/03-29_lw200_kl50',
+                    help='Directory to save the model')
+
+parser.add_argument('--gbp',
+                    action='store_true',
+                    help='Group by person')
+
+parser.add_argument('--opt_pro',
+                    default='process',
                     help='Directory to save the model')
 
 args = parser.parse_args()
 
 save_dir = Path(args.save_dir)
 save_dir.mkdir(exist_ok=True, parents=True)
+
+process_dir = args.opt_pro / save_dir
+process_dir.mkdir(exist_ok=True, parents=True)
+if args.content_list is not None:
+    with open(args.content_list, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            name, idx = line.split('\t')
+            img_path = os.path.join(args.content_src, name.replace(' ', '_'), idx.replace('\n', '') + '.png')
+            img = cv2.imread(img_path)
+            if not os.path.exists(args.content_dir):
+                os.mkdir(args.content_dir)
+            if img is not None:
+                cv2.imwrite(os.path.join(args.content_dir, f'{name}_{idx}.png').replace('\n', ''), img)
 
 # pre and post processing for images
 # img_size = 256
@@ -71,11 +100,6 @@ save_dir.mkdir(exist_ok=True, parents=True)
 # style_layers = []
 
 
-args = parser.parse_args()
-
-save_dir = Path(args.save_dir)
-save_dir.mkdir(exist_ok=True, parents=True)
-
 # pre and post processing for images
 # img_size = 256
 # img_size_hr = 512  # works for 8GB GPU, make larger if you have 12GB or more
@@ -85,19 +109,36 @@ save_dir.mkdir(exist_ok=True, parents=True)
 # these are layers settings:
 # style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_weights = [1e3 / n ** 2 for n in [64, 128, 256, 512, 512]]
-style_layers = []
-style_weights = []
+# style_weights = [1, 1, 1, 1, 1]
+style_weights = [args.sw] * 5
+style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
+# style_layers = []
+# style_weights = []
 
+<<<<<<< HEAD:NeuralStyleTransfer.py
 content_layers = ['r42']
 content_weights = [1e2]
 # content_layers = []
 # content_weights = []
+=======
+alpha = args.cw / (args.cw + args.lw)
+beta = args.lw / (args.cw + args.lw)
+# beta = args.lw
+# content_layers = ['r42']
+# content_weights = [1e6 * 6]
+# content_layers = []
+# content_weights = []
+content_layers = ['r42']
+content_weights = [alpha]
+>>>>>>> final:main.py
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
 laplacia_layers = ['r32']
-laplacia_weights = [1e5 / n ** 2 for n in [256]]
+# laplacia_weights = [1e5 / n ** 2 for n in [256]]
+# laplacia_weights = [args.lw]
 # laplacia_weights = ['r32']
+laplacia_weights = [beta]
 
 # mutex_layers = ['r52']
 mutex_layers = []
@@ -184,10 +225,10 @@ style_dataset = FlatFolderDataset(args.style_dir, args.style_mask_dir, prep, pre
 
 content_loader = data.DataLoader(
     content_dataset, batch_size=1, shuffle=False,
-    num_workers=0)
+    num_workers=4)
 style_loader = data.DataLoader(
     style_dataset, batch_size=1, shuffle=False,
-    num_workers=0)
+    num_workers=4)
 
 # content_hr_loader = data.DataLoader(
 #     content_hr_dataset, batch_size=1, shuffle=False,
@@ -225,11 +266,28 @@ if torch.cuda.is_available():
 
 outputs = []
 style_images = []
-epoch = 0
+epoch = 1
+
+total_time = 0
+avg_time = 0
 
 for content_image, content_image_hr, content_mask, content_name in content_loader:
     # print(content_name)
     for style_image, style_image_hr, style_mask, style_name in style_loader:
+
+        if not args.gbp:
+            output_path = os.path.join(args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
+        else:
+            person_name, extention = os.path.splitext(content_name[0])
+            output_dir = os.path.join(args.save_dir, person_name).replace(' ', '_')
+            if not os.path.exists(output_dir):
+                Path(output_dir).mkdir(exist_ok=True, parents=True)
+            output_path = os.path.join(output_dir, f'{content_name[0]}-{style_name[0]}.png').replace(' ', '_')
+
+        if os.path.exists(output_path):
+            print(f'Stylization exist in {output_path}')
+            continue
+        start = time.time()
         content_image = content_image.to(device)
         content_image_hr = content_image_hr.to(device)
 
@@ -275,7 +333,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         # targets = style_targets + content_targets + laplacia_targets
         M = Maintainer(vgg, content_image, style_image, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask)
+                       args.km, content_mask, style_mask, args.use_mask, args.mean)
 
         # %%
 
@@ -292,20 +350,22 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 torch.cuda.empty_cache()
                 loss = sum(layer_losses)
                 loss.backward()
+                # tmp_out_img = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
+                # torchvision.utils.save_image(tmp_out_img, os.path.join(str(process_dir),
+                #                                                        f'{content_name[0]}-{style_name[0]}-{n_iter[0]}_lr.png'))
                 n_iter[0] += 1
                 # print loss
                 if n_iter[0] % show_iter == (show_iter - 1):
                     print('Iteration: %d, loss: %f' % (n_iter[0] + 1, loss.item()))
                 if n_iter[0] % args.update_step == (args.update_step - 1) and not M.laplacian_updated:
-                    pass
+                    # pass
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
-                    # M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                    # M.laplacian_s_feats)
+                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):], M.laplacian_s_feats, args.kl)
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
-                    # print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
+                    print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
                     # print('Update laplacian graph and loss functions: %d' % (n_iter[0] + 1))
                 #             print([loss_layers[li] + ': ' +  str(l.data[0]) for li,l in enumerate(layer_losses)]) #loss of each layer
                 return loss
@@ -339,7 +399,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         M = Maintainer(vgg, content_image_hr, style_image_hr, content_layers, style_layers, laplacia_layers,
                        device, args.kl,
-                       args.km, content_mask, style_mask)
+                       args.km, content_mask, style_mask, args.use_mask, args.mean)
 
         # now initialise with upsampled lowres result
         opt_img = prep_hr(out_img).unsqueeze(0)
@@ -366,6 +426,10 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 # loss = sum(layer_losses)
                 torch.cuda.empty_cache()
                 loss.backward()
+
+                # tmp_out_img = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
+                # torchvision.utils.save_image(tmp_out_img, os.path.join(str(process_dir),
+                #                                                        f'{content_name[0]}-{style_name[0]}-{n_iter[0]}_hr.png'))
                 n_iter[0] += 1
                 # print loss
                 if n_iter[0] % show_iter == (show_iter - 1):
@@ -373,27 +437,32 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                     print('Iteration: %d, loss: %f' % (n_iter[0] + 1, loss.item()))
                 if n_iter[0] % args.update_step_hr == (args.update_step_hr - 1) and not M.laplacian_updated:
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
-                    # M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                    #                           M.laplacian_s_feats)
+                    M.update_loss_fns_with_lg(out[-len(laplacia_layers):], M.laplacian_s_feats, args.kl)
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
-                    pass
+                    # pass
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
-                    # print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
+                    print('Update: Laplacian graph and Loss functions: %d' % (n_iter[0] + 1))
                 # k          print([loss_layers[li] + ': ' +  str(l.data[0]) for li,l in enumerate(layer_losses)]) #loss of each layer
                 return loss
 
 
             optimizer.step(closure)
 
+        end = time.time()
+        total_time += end - start
+        avg_time = total_time / epoch
+        print(f'Avg time {round(avg_time, 2)}')
         # display result
         out_img_hr = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
         style_image_hr = post_tensor(style_image_hr.data.cpu().squeeze()).unsqueeze(0)
         # imshow(out_img_hr)
         style_images.append(style_image_hr)
         outputs.append(out_img_hr)
-        print('Dones: [{}-{}].'.format(content_name[0], style_name[0]))
+
+        torchvision.utils.save_image(out_img_hr.clone(), output_path)
+
         if (epoch + 1) % args.batch_size == 0:
             style_images = torch.cat(style_images, dim=0)
             outputs = torch.cat(outputs, dim=0)
@@ -404,6 +473,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             print('Save to [{}]'.format(path))
             outputs = []
             style_images = []
+        print('Done: [{}-{}].'.format(content_name[0], style_name[0]))
+
         epoch += 1
 # gcf().set_size_inches(10,10)
 
