@@ -33,10 +33,10 @@ parser.add_argument('--max_iter_hr', type=int, default=200,
                     help='Max iterations of optimization for high resolution image')
 
 parser.add_argument('--update_step', type=int, default=50,
-                    help='Update step of loss function and laplacian graph')
+                    help='Update frequency of affinity matrix on low resolution rendering stage')
 
 parser.add_argument('--update_step_hr', type=int, default=50,
-                    help='Update step of loss function and laplacian graph')
+                    help= 'Update frequency of affinity matrix on high resolution rendering stage')
 
 parser.add_argument('--img_size', type=int, default=256,
                     help='Image size of low resolution')
@@ -44,24 +44,24 @@ parser.add_argument('--img_size_hr', type=int, default=512,
                     help='Image size of high resolution')
 
 parser.add_argument('--kl', type=int, default=50,
-                    help='K neighborhoods selection for laplacian graph')
+                    help='K neighborhoods selection for affinity matrix')
 parser.add_argument('--km', type=int, default=1,
-                    help='K neighborhoods selection for mutex graph')
+                    help='K neighborhoods selection for affinity matrix')
 # parser.add_argument('--sigma', type=int, default=10,
 #                     help='Weight of Variance loss ')
 
 parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--use_mask', type=bool, default=False)
-parser.add_argument('--lw', type=float, default=200)
-parser.add_argument('--cw', type=float, default=200)
-parser.add_argument('--sw', type=float, default=0)
+parser.add_argument('--lw', type=float, default=200,help = 'style loss weight')
+parser.add_argument('--cw', type=float, default=200, help='content loss weight')
+parser.add_argument('--sw', type=float, default=0,help='style loss weight, default is set as 0 to disable original style loss contribution')
 parser.add_argument('--content_src', type=str, default='datasets/04191521_1000_100_1/warp')
 parser.add_argument('--content_list', type=str, default=None)
 parser.add_argument('--mean', default='mean', type=str)
 # training options0
 parser.add_argument('--save_dir',
                     default='exp/03-29_lw200_kl50',
-                    help='Directory to save the model')
+                    help='Directory for output result')
 
 parser.add_argument('--gbp',
                     action='store_true',
@@ -115,12 +115,6 @@ style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_layers = []
 # style_weights = []
 
-<<<<<<< HEAD:NeuralStyleTransfer.py
-content_layers = ['r42']
-content_weights = [1e2]
-# content_layers = []
-# content_weights = []
-=======
 alpha = args.cw / (args.cw + args.lw)
 beta = args.lw / (args.cw + args.lw)
 # beta = args.lw
@@ -130,7 +124,6 @@ beta = args.lw / (args.cw + args.lw)
 # content_weights = []
 content_layers = ['r42']
 content_weights = [alpha]
->>>>>>> final:main.py
 
 # laplacia_layers = ['r32']
 # feature maps size : [ 256, 64, 64]
