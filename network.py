@@ -7,7 +7,6 @@ from torch import nn as nn, nn
 from torch.nn import functional as F
 from torch.utils import data as data
 
-
 # from NeuralStyleTransfer import style_feats, content_feats, laplacian_s_feats, style_targets, content_targets, \
 #     laplacia_targets, targets, loss_fns
 
@@ -87,7 +86,6 @@ class GramMSELoss(nn.Module):
 
 
 class ConsistencyLoss(nn.Module):
-
     def __init__(self, laplacian_graph, k, mask=None, mean='mean') -> None:
         super().__init__()
         self.mask = mask
@@ -107,6 +105,12 @@ class ConsistencyLoss(nn.Module):
         #     flat_mask_row = down_sampled_mask.view(1, -1)
         #     self.consistency_matrix = (flat_mask_col == flat_mask_row).float()
         # if self.consistency_matrix == None:
+
+        if H > 64:
+            input = F.adaptive_avg_pool2d(input, (64, 64))
+            target = F.adaptive_avg_pool2d(target, (64, 64))
+            H = 64
+            W = 64
         flat_input = input.view(C, -1)
         flat_target = target.view(C, -1)
         # print(flat_target.size())
@@ -131,17 +135,31 @@ def cal_dist(A, B):
     """
     ASize = A.size()
     BSize = B.size()
-    dist = (torch.sum(A ** 2, dim=0).view(ASize[1], 1).expand(ASize[1], BSize[1]) +
-            torch.sum(B ** 2, dim=0).view(1, BSize[1]).expand(ASize[1], BSize[1]) -
-            2 * torch.mm(A.t(), B)).to(A.device)
+    dist = (
+        torch.sum(A**2, dim=0).view(ASize[1], 1).expand(ASize[1], BSize[1]) +
+        torch.sum(B**2, dim=0).view(1, BSize[1]).expand(ASize[1], BSize[1]) -
+        2 * torch.mm(A.t(), B)).to(A.device)
     return dist
 
 
-def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None, s_mask=None, use_mask=False):
+def cal_graph(content_feat,
+              style_feat,
+              device,
+              k=3,
+              reverse=False,
+              c_mask=None,
+              s_mask=None,
+              use_mask=False):
     print(f'Content feature map size: {content_feat.size()}')
     print(f'Style feature map size: {style_feat.size()}')
     assert content_feat.size() == style_feat.size()
     N, C, H, W = content_feat.size()
+    # print(f'H: {H}, W: {W}')
+    if H > 64:
+        content_feat = F.adaptive_avg_pool2d(content_feat, (64, 64))
+        style_feat = F.adaptive_avg_pool2d(style_feat, (64, 64))
+        H = 64
+        W = 64
     content_feat = content_feat.squeeze()
     style_feat = style_feat.squeeze()
     n_content_feat = F.normalize(content_feat, dim=0).view(C, -1)
@@ -181,9 +199,7 @@ def cal_graph(content_feat, style_feat, device, k=3, reverse=False, c_mask=None,
 
 
 def build_label_map():
-    labels = torch.arange(0, 10).view(1, 10, 1, 1).expand(1,
-                                                          10, 1,
-                                                          1).long()
+    labels = torch.arange(0, 10).view(1, 10, 1, 1).expand(1, 10, 1, 1).long()
     return labels
 
 
@@ -222,9 +238,20 @@ class FlatFolderDataset(data.Dataset):
 
 
 class Maintainer:
-
-    def __init__(self, vgg, content_image, style_image, content_layers, style_layers,
-                 laplacian_layers, device, kl=7, km=1, c_mask=None, s_mask=None, use_mask=False, mean='mean') -> None:
+    def __init__(self,
+                 vgg,
+                 content_image,
+                 style_image,
+                 content_layers,
+                 style_layers,
+                 laplacian_layers,
+                 device,
+                 kl=7,
+                 km=1,
+                 c_mask=None,
+                 s_mask=None,
+                 use_mask=False,
+                 mean='mean') -> None:
         self.vgg = vgg
         self.content_image = content_image
         self.style_image = style_image
@@ -241,8 +268,9 @@ class Maintainer:
         self.use_mask = use_mask
         self.mean = mean
 
-        self.build_training_components(content_image, style_image, content_layers, style_layers, laplacian_layers,
-                                       c_mask, s_mask)
+        self.build_training_components(content_image, style_image,
+                                       content_layers, style_layers,
+                                       laplacian_layers, c_mask, s_mask)
 
     def build_layers(self, img, keys):
         # global laplacia_c_feats, laplacia_s_feats
@@ -251,9 +279,11 @@ class Maintainer:
         return self.vgg(img, keys)
 
     def build_loss_fns(self):
-        loss_fns = [GramMSELoss()] * len(self.style_layers) + [nn.MSELoss()] * len(self.content_layers) + [
-            ConsistencyLoss(l, self.kl, mean=self.mean) for
-            l in self.laplacian_graph]
+        loss_fns = [GramMSELoss()] * len(
+            self.style_layers) + [nn.MSELoss()] * len(self.content_layers) + [
+                ConsistencyLoss(l, self.kl, mean=self.mean)
+                for l in self.laplacian_graph
+            ]
         if torch.cuda.is_available():
             loss_fns = [loss_fn.cuda() for loss_fn in loss_fns]
         return loss_fns
@@ -264,7 +294,13 @@ class Maintainer:
     #                   7) for idx in range(len(c_feats))]
     #     return laplacian_graphs
 
-    def build_graph(self, c_feats, s_feats, k, reverse=False, c_mask=None, s_mask=None):
+    def build_graph(self,
+                    c_feats,
+                    s_feats,
+                    k,
+                    reverse=False,
+                    c_mask=None,
+                    s_mask=None):
         """
         cal neigborhood  graph
         :param c_feats:
@@ -274,25 +310,41 @@ class Maintainer:
         """
         assert len(c_feats) == len(s_feats)
         graph = [
-            cal_graph(c_feats[idx], s_feats[idx], self.device,
-                      k, reverse, c_mask, s_mask, self.use_mask) for idx in range(len(c_feats))]
+            cal_graph(c_feats[idx], s_feats[idx], self.device, k, reverse,
+                      c_mask, s_mask, self.use_mask)
+            for idx in range(len(c_feats))
+        ]
 
         return graph
 
-    def build_training_components(self, content_image, style_image, content_layers, style_layers,
-                                  laplacian_layers_keys, c_mask=None, s_mask=None):
+    def build_training_components(self,
+                                  content_image,
+                                  style_image,
+                                  content_layers,
+                                  style_layers,
+                                  laplacian_layers_keys,
+                                  c_mask=None,
+                                  s_mask=None):
         self.style_feats = self.build_layers(style_image, style_layers)
         self.content_feats = self.build_layers(content_image, content_layers)
-        self.laplacian_c_feats = self.build_layers(content_image, laplacian_layers_keys)
-        self.laplacian_s_feats = self.build_layers(style_image, laplacian_layers_keys)
+        self.laplacian_c_feats = self.build_layers(content_image,
+                                                   laplacian_layers_keys)
+        self.laplacian_s_feats = self.build_layers(style_image,
+                                                   laplacian_layers_keys)
 
-        self.style_targets = [GramMatrix()(A).detach() for A in self.style_feats]
+        self.style_targets = [
+            GramMatrix()(A).detach() for A in self.style_feats
+        ]
         self.content_targets = [A.detach() for A in self.content_feats]
         self.laplacia_targets = [A.detach() for A in self.laplacian_s_feats]
         self.targets = self.style_targets + self.content_targets + self.laplacia_targets
 
-        self.laplacian_graph = self.build_graph(self.laplacian_c_feats, self.laplacian_s_feats, self.kl, reverse=False,
-                                                c_mask=c_mask, s_mask=s_mask)
+        self.laplacian_graph = self.build_graph(self.laplacian_c_feats,
+                                                self.laplacian_s_feats,
+                                                self.kl,
+                                                reverse=False,
+                                                c_mask=c_mask,
+                                                s_mask=s_mask)
         self.loss_fns = self.build_loss_fns()
 
     def add_mutex_constrain(self, feats):
@@ -302,16 +354,15 @@ class Maintainer:
         if not self.mutex_flag:
             mutex_graph = self.build_graph(feats, feats, self.km, True)
             self.targets += mutex_targets
-            self.loss_fns += [ConsistencyLoss(l) for
-                              l in mutex_graph]
+            self.loss_fns += [ConsistencyLoss(l) for l in mutex_graph]
             self.mutex_flag = True
         else:
             mutex_graph = self.build_graph(feats, feats, self.km, True)
-            index = len(self.style_feats) + len(self.content_targets) + len(self.laplacia_targets)
+            index = len(self.style_feats) + len(self.content_targets) + len(
+                self.laplacia_targets)
             # del self.targets[-len(mutex_targets):]
             self.targets[:index] += mutex_targets
-            self.loss_fns[:index] += [ConsistencyLoss(l) for
-                                      l in mutex_graph]
+            self.loss_fns[:index] += [ConsistencyLoss(l) for l in mutex_graph]
 
     def update_loss_fns_with_lg(self, c_feats, s_feats, k):
         for l in self.laplacian_graph:

@@ -3,3 +3,6 @@
 datasets
 exp
 .DS_Store
+output
+__pycache__
+Models

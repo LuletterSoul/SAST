@@ -1,6 +1,8 @@
 # %pylab inline
 import os
 
+from torch.utils.data import sampler
+
 image_dir = os.getcwd() + '/Images/'
 model_dir = os.getcwd() + '/Models/'
 
@@ -99,11 +101,12 @@ parser.add_argument('--opt_pro',
 
 args = parser.parse_args()
 
-save_dir = Path(args.save_dir)
+save_dir = f'{args.save_dir}_cl[{args.cl}]_sl[{args.sl}]'
+save_dir = Path(save_dir)
 save_dir.mkdir(exist_ok=True, parents=True)
 
-process_dir = args.opt_pro / save_dir
-process_dir.mkdir(exist_ok=True, parents=True)
+# process_dir = args.opt_pro / save_dir
+# process_dir.mkdir(exist_ok=True, parents=True)
 if args.content_list is not None:
     with open(args.content_list, 'r') as f:
         lines = f.readlines()
@@ -306,10 +309,10 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         if not args.gbp:
             output_path = os.path.join(
-                args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
+                str(save_dir), f'{content_name[0]}-{style_name[0]}.png')
         else:
             person_name, extention = os.path.splitext(content_name[0])
-            output_dir = os.path.join(args.save_dir,
+            output_dir = os.path.join(str(save_dir),
                                       person_name).replace(' ', '_')
             if not os.path.exists(output_dir):
                 Path(output_dir).mkdir(exist_ok=True, parents=True)
@@ -520,7 +523,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             outputs = torch.cat(outputs, dim=0)
             o = torch.cat([style_images, outputs], dim=0)
             path = os.path.join(
-                args.save_dir,
+                str(save_dir),
                 'total-{}-{}-{}.png'.format(epoch, content_name[0],
                                             style_name[0]))
             torchvision.utils.save_image(o, path, nrow=args.batch_size)
