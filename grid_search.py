@@ -371,7 +371,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         # targets = style_targets + content_targets + laplacia_targets
         M = Maintainer(vgg, content_image, style_image, content_layers,
                        style_layers, laplacia_layers, device, args.kl, args.km,
-                       content_mask, style_mask, args.use_mask, args.mean)
+                       content_mask, style_mask, args.use_mask, args.mean,
+                       save_dir)
 
         # %%
 
@@ -444,7 +445,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         M = Maintainer(vgg, content_image_hr, style_image_hr, content_layers,
                        style_layers, laplacia_layers, device, args.kl, args.km,
-                       content_mask, style_mask, args.use_mask, args.mean)
+                       content_mask, style_mask, args.use_mask, args.mean,
+                       save_dir)
 
         # now initialise with upsampled lowres result
         opt_img = prep_hr(out_img).unsqueeze(0)
