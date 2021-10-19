@@ -317,6 +317,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
     # print(content_name)
     for style_image, style_image_hr, style_mask, style_name in style_loader:
 
+        output_filename = f'{content_name[0]}-{style_name[0]}.png'
+        output_filename = output_filename.replace(' ', '_')
         if not args.gbp:
             output_path = os.path.join(
                 args.save_dir, f'{content_name[0]}-{style_name[0]}.png')
@@ -414,7 +416,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
                     M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                                              M.laplacian_s_feats, args.kl)
+                                              M.laplacian_s_feats, args.kl,
+                                              n_iter[0])
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
                     print('Update: Laplacian graph and Loss functions: %d' %
@@ -497,12 +500,21 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                         args.update_step_hr - 1) and not M.laplacian_updated:
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
                     M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                                              M.laplacian_s_feats, args.kl)
+                                              M.laplacian_s_feats, args.kl,
+                                              n_iter[0])
+                    inter_path = os.path.join(args.save_dir, 'vis')
+                    os.makedirs(inter_path, exist_ok=True)
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
                     # pass
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
+
+                    out_img_hr = post_tensor(
+                        opt_img.data.cpu().squeeze()).unsqueeze(0)
+                    torchvision.utils.save_image(
+                        out_img_hr.clone(),
+                        os.path.join(inter_path, f'{n_iter[0] + 1}.png'))
                     print('Update: Laplacian graph and Loss functions: %d' %
                           (n_iter[0] + 1))
                 # k          print([loss_layers[li] + ': ' +  str(l.data[0]) for li,l in enumerate(layer_losses)]) #loss of each layer
@@ -510,7 +522,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
             optimizer.step(closure)
 
-        M.recoder.plot()
+        M.recoder.plot(output_filename)
         end = time.time()
         total_time += end - start
         avg_time = total_time / epoch
@@ -523,6 +535,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         style_images.append(style_image_hr)
         outputs.append(out_img_hr)
 
+        # out_img_hr = post_tensor(opt_img.data.cpu().squeeze()).unsqueeze(0)
         torchvision.utils.save_image(out_img_hr.clone(), output_path)
 
         if (epoch + 1) % args.batch_size == 0:

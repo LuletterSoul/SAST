@@ -247,9 +247,9 @@ class LaplacianMatrixRecorder(object):
 
     def plot(self, figname):
         datas = np.array(self.binary_changes)
-        x = datas[:, 0]
-        ones = datas[:, 1]
-        zeros = datas[:, 2]
+        x = datas[::5, 0]
+        ones = datas[::5, 1]
+        zeros = datas[::5, 2]
         # print(ones)
         # print(zeros)
         plt.plot(x, ones, 'r--', label='ones')
@@ -312,7 +312,8 @@ class Maintainer:
         self.build_training_components(content_image, style_image,
                                        content_layers, style_layers,
                                        laplacian_layers, c_mask, s_mask)
-        self.recoder = LaplacianMatrixRecorder(self.laplacian_graph, output_dir)
+        self.recoder = LaplacianMatrixRecorder(self.laplacian_graph,
+                                               output_dir)
 
     def build_layers(self, img, keys):
         # global laplacia_c_feats, laplacia_s_feats
