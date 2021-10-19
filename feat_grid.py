@@ -74,8 +74,8 @@ style_dir = '/data/lxd/project/SAST/datasets/styles_1012'
 
 # # 固定内容特征r42层，风格特征分别使用r32-r52, cw = 0
 
-content_rows = ['r12', 'r22', 'r32', 'r42']
-style_cols = ['r12', 'r22', 'r32', 'r42']
+content_rows = ['r12', 'r22', 'r32', 'r42', 'r52']
+style_cols = ['r12', 'r22', 'r32', 'r42', 'r52']
 
 # stylizations = [[
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r12]',
@@ -84,7 +84,7 @@ style_cols = ['r12', 'r22', 'r32', 'r42']
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r42]',
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r52]',
 # ]]
-output_dir = Path('output/2021-10-02_gridsearch_ups')
+output_dir = Path('output/2021-10-07_features_gridsearch_noups')
 
 # # 固定风格特征r42层, 内容损失权重分别为1,2,5,10
 # stylizations = [[
@@ -132,7 +132,9 @@ for c in content_names:
             h_plot = [WHITE]
             for sl in style_cols:
                 # o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_cl[{cl}]_sl[{sl}]'
-                o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_up[50]_cl[{cl}]_sl[{sl}]'
+                # o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_up[50]_cl[{cl}]_sl[{sl}]'
+                # o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_up[50]_cl[{cl}]_sl[{sl}]'
+                o_path = f'exp/2021-10-07_up[1000]_cw[1]_lw[1]_cl[{cl}]_sl[{sl}]'
                 # for sty in stylizations:
                 # s_idx, extention = os.path.splitext(s)
                 print(os.path.join(o_path, c_idx, f'{c_idx}-{s_idx}.png'))

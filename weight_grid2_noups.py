@@ -17,8 +17,8 @@ from pathlib import Path
 
 from numpy.testing._private.utils import print_assert_equal
 
-content_dir = '/data/lxd/project/SAST/datasets/contents_1012'
-style_dir = '/data/lxd/project/SAST/datasets/styles_1012'
+content_dir = '/data/lxd/datasets/2021-10-09-weight_grid_search2/contents'
+style_dir = '/data/lxd/datasets/2021-10-08-weight_grid_search/styles'
 # style_dir = 'images/styles_0421_k'
 # content_dir = 'images/contents_0421_k'
 # stylizations = ['exp/0421_cw1_lw0.1_kl50', 'exp/0421_cw1_lw1_kl50', 'exp/0421_cw1_lw10_kl50', 'exp/0421_cw1_lw100_kl50',
@@ -53,15 +53,14 @@ style_dir = '/data/lxd/project/SAST/datasets/styles_1012'
 # ]]
 
 # 固定风格特征r32层，内容特征分别使用r12-r42, cw = 0
-stylizations = [[
-    'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r12]',
-    'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r22]',
-    'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r32]',
-    'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r42]',
-    'exp/2021-10-02_cw[1]_sw[0]_lw[1]_cl[r52]_sl[r32]',
-    'exp/2021-10-02_cw[0]_sw[0]_lw[1]_cl[r52]_sl[r32]'
-]]
-output_path = Path('output/2021-10-07_cw1_sw0_lw1_us1000_ushr1000_cfm')
+# stylizations = [[
+#     'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r12]',
+#     'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r22]',
+#     'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r32]',
+#     'exp/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm[r42]',
+#     'exp/2021-10-01_cw0_sw0_lw1_us1000_ushr1000_cfm[r42]'
+# ]]
+# output_path = Path('output/2021-10-01_cw1_sw0_lw1_us1000_ushr1000_cfm')
 
 # lw = 0， 内容特征分别使用r12-r51
 # stylizations = [[
@@ -74,6 +73,10 @@ output_path = Path('output/2021-10-07_cw1_sw0_lw1_us1000_ushr1000_cfm')
 # output_path = Path('output/2021-10-01_cw[1]_sw[0]_lw[0]_us1000_ushr1000_cfm')
 
 # # 固定内容特征r42层，风格特征分别使用r32-r52, cw = 0
+
+cw_rows = ['1.0', '10.0', '50.0', '100.0', '1000.0']
+lw_cols = ['0.1', '1.0', '10.0', '100.0', '1000.0']
+
 # stylizations = [[
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r12]',
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r22]',
@@ -81,7 +84,8 @@ output_path = Path('output/2021-10-07_cw1_sw0_lw1_us1000_ushr1000_cfm')
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r42]',
 #     'exp/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm[r52]',
 # ]]
-# output_path = Path('output/2021-10-01_cw[1]_sw[0]_lw[1]_us1000_ushr1000_sfm')
+# output_dir = Path('output/2021-10-07_weight_gridsearch_ups')
+output_dir = Path('output/2021-10-09_weight_gridsearch_noups2')
 
 # # 固定风格特征r42层, 内容损失权重分别为1,2,5,10
 # stylizations = [[
@@ -105,33 +109,49 @@ output_path = Path('output/2021-10-07_cw1_sw0_lw1_us1000_ushr1000_cfm')
 # output_path = Path('output/contents_0429_cw0_lw1-1000_cmp')
 # output_path = Path('outpu1/contents_0429_cw0_lw1_ups_cmp')
 
-if not output_path.exists():
-    output_path.mkdir(exist_ok=True, parents=True)
+if not output_dir.exists():
+    output_dir.mkdir(exist_ok=True, parents=True)
 
 style_names = os.listdir(style_dir)
 content_names = os.listdir(content_dir)
 
+WHITE = np.ones((512, 512, 3), dtype=np.uint8) * 255
+
 for c in content_names:
-    print(c)
-    plot = []
-    c_idx, extention = os.path.splitext(c)
-    c_idx = c_idx.replace(' ', '_')
-    content_img = cv2.imread(os.path.join(content_dir, c))
-    h_plot = [content_img]
-    for i in range(len(stylizations[0])):
-        h_plot.append(np.ones((512, 512, 3), dtype=np.uint8) * 255)
-    plot.append(np.hstack(h_plot))
     for s in style_names:
-        for sty in stylizations:
-            s_idx, extention = os.path.splitext(s)
-            h_plot = [cv2.imread(os.path.join(style_dir, s))]
-            for o_path in sty:
+        plot = []
+        c_idx, extention = os.path.splitext(c)
+        c_idx = c_idx.replace(' ', '_')
+        content_img = cv2.imread(os.path.join(content_dir, c))
+        h_plot = [content_img]
+        for i in range(len(lw_cols) + 1):
+            h_plot.append(WHITE)
+        plot.append(np.hstack(h_plot))
+        s_idx, extention = os.path.splitext(s)
+        style_img = cv2.imread(os.path.join(style_dir, s))
+        for cw in cw_rows:
+            h_plot = [WHITE]
+            for lw in lw_cols:
+                # o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_cl[{cl}]_sl[{sl}]'
+                # o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_up[50]_cl[{cl}]_sl[{sl}]'
+                # o_path = f'exp/2021-10-02_cw[1]_sw[0]_lw[1]_up[50]_cl[{cl}]_sl[{sl}]'
+                # o_path = f'exp/2021-10-07_cl[r42]_sl[r32]_up[1000]_cw[{cw}]_lw[{lw}]'
+                o_path = f'exp/2021-10-09_cl[r42]_sl[r32]_up[1000]_2_cw[{cw}]_lw[{lw}]'
+                # for sty in stylizations:
+                # s_idx, extention = os.path.splitext(s)
                 print(os.path.join(o_path, c_idx, f'{c_idx}-{s_idx}.png'))
                 output = cv2.imread(
                     os.path.join(o_path, c_idx, f'{c_idx}-{s_idx}.png'))
                 if output is None:
                     raise Exception('Empty stylization loaded.')
                 h_plot.append(output)
+            h_plot.append(WHITE)
             plot.append(np.hstack(h_plot))
-    plot = np.vstack(plot)
-    cv2.imwrite(str(output_path / f'{c_idx}-cmp.png'), plot)
+        h_plot = []
+        for i in range(len(lw_cols) + 1):
+            h_plot.append(WHITE)
+        h_plot.append(style_img)
+        plot.append(np.hstack(h_plot))
+        plot = np.vstack(plot)
+        output_path = f'{str(output_dir)}/{c_idx}-{s_idx}.png'
+        cv2.imwrite(output_path, plot)

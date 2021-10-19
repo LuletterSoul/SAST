@@ -80,7 +80,7 @@ parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--use_mask', type=bool, default=False)
 parser.add_argument('--lw', type=float, default=30)
 parser.add_argument('--cw', type=float, default=1)
-parser.add_argument('--sw', type=float, default=0)
+parser.add_argument('--sw', type=float, default=1)
 parser.add_argument('--content_src',
                     type=str,
                     default='datasets/04191521_1000_100_1/warp')
@@ -101,7 +101,7 @@ parser.add_argument('--opt_pro',
 
 args = parser.parse_args()
 
-save_dir = f'{args.save_dir}_cl[{args.cl}]_sl[{args.sl}]'
+save_dir = f'{args.save_dir}_cw[{args.cw}]_lw[{args.lw}]'
 save_dir = Path(save_dir)
 save_dir.mkdir(exist_ok=True, parents=True)
 

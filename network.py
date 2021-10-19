@@ -3,9 +3,11 @@ from pathlib import Path
 
 import torch
 from PIL import Image
-from torch import nn as nn, nn
+from torch import nn as nn, nn, zero_
 from torch.nn import functional as F
 from torch.utils import data as data
+import matplotlib.pyplot as plt
+import numpy as np
 
 # from NeuralStyleTransfer import style_feats, content_feats, laplacian_s_feats, style_targets, content_targets, \
 #     laplacia_targets, targets, loss_fns
@@ -237,6 +239,56 @@ class FlatFolderDataset(data.Dataset):
         return 'FlatFolderDataset'
 
 
+class LaplacianMatrixRecorder(object):
+    def __init__(self, laplacian_graph, output_dir) -> None:
+        super().__init__()
+        self.laplacian_graph = laplacian_graph
+        self.binary_changes = []
+        self.plot_dir = os.path.join(output_dir, 'vis')
+        os.makedirs(self.plot_dir, exist_ok=True)
+        # self.update(0, self.laplacian_graph)
+
+    def update(self, iterations, new_laplacian_graph):
+        for new, old in zip(new_laplacian_graph, self.laplacian_graph):
+            H, W = new.size()
+            diff = torch.abs(new - old)
+            one_nums = torch.sum(diff).int().detach().cpu().numpy()
+            zero_nums = H * W - one_nums
+            self.binary_changes.append([iterations, one_nums, zero_nums])
+        self.laplacian_graph = new_laplacian_graph
+
+    def plot(self, figname):
+        datas = np.array(self.binary_changes)
+        x = datas[:, 0]
+        ones = datas[:, 1]
+        zeros = datas[:, 2]
+        # print(ones)
+        # print(zeros)
+        plt.plot(x, ones, 'r--', label='ones')
+        # plt.plot(x, zeros, 'g--', label='zeros')
+        plt.plot(x, ones, 'ro-')
+        plt.title('The convergency of affinity matrix')
+        plt.xlabel('iterations')
+        plt.ylabel('number')
+        plt.legend()
+        plt.show()
+        plt.savefig(os.path.join(self.plot_dir, f'{1}_{figname}'))
+
+        plt.close()
+
+        plt.plot(x, zeros, 'g--', label='zeros')
+        plt.plot(x, zeros, 'g+-')
+        plt.title('The convergency of affinity matrix')
+        plt.xlabel('iterations')
+        plt.ylabel('number')
+        plt.legend()
+        plt.show()
+        plt.savefig(os.path.join(self.plot_dir, f'{0}_{figname}'))
+        plt.close()
+        # plt.plot(x, zeros, 'g--', label='zeros')
+        # plt.plot(x, ones, 'ro-', x, zeros, 'g+-')
+
+
 class Maintainer:
     def __init__(self,
                  vgg,
@@ -251,7 +303,8 @@ class Maintainer:
                  c_mask=None,
                  s_mask=None,
                  use_mask=False,
-                 mean='mean') -> None:
+                 mean='mean',
+                 output_dir=None) -> None:
         self.vgg = vgg
         self.content_image = content_image
         self.style_image = style_image
@@ -271,6 +324,8 @@ class Maintainer:
         self.build_training_components(content_image, style_image,
                                        content_layers, style_layers,
                                        laplacian_layers, c_mask, s_mask)
+        self.lp_recorder = LaplacianMatrixRecorder(self.laplacian_graph,
+                                                   output_dir)
 
     def build_layers(self, img, keys):
         # global laplacia_c_feats, laplacia_s_feats
@@ -314,7 +369,6 @@ class Maintainer:
                       c_mask, s_mask, self.use_mask)
             for idx in range(len(c_feats))
         ]
-
         return graph
 
     def build_training_components(self,
@@ -364,7 +418,7 @@ class Maintainer:
             self.targets[:index] += mutex_targets
             self.loss_fns[:index] += [ConsistencyLoss(l) for l in mutex_graph]
 
-    def update_loss_fns_with_lg(self, c_feats, s_feats, k):
+    def update_loss_fns_with_lg(self, c_feats, s_feats, k, iterations=None):
         for l in self.laplacian_graph:
             del l
         c_feats = [A.detach() for A in c_feats]
@@ -372,3 +426,4 @@ class Maintainer:
         self.laplacian_graph = self.build_graph(c_feats, s_feats, k)
         self.loss_fns = self.build_loss_fns()
         torch.cuda.empty_cache()
+        self.lp_recorder.update(iterations, self.laplacian_graph)

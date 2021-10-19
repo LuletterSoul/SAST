@@ -1,8 +1,6 @@
 # %pylab inline
 import os
 
-from torch.utils.data import sampler
-
 image_dir = os.getcwd() + '/Images/'
 model_dir = os.getcwd() + '/Models/'
 
@@ -80,7 +78,7 @@ parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--use_mask', type=bool, default=False)
 parser.add_argument('--lw', type=float, default=30)
 parser.add_argument('--cw', type=float, default=1)
-parser.add_argument('--sw', type=float, default=0)
+parser.add_argument('--sw', type=float, default=1)
 parser.add_argument('--content_src',
                     type=str,
                     default='datasets/04191521_1000_100_1/warp')
@@ -101,12 +99,11 @@ parser.add_argument('--opt_pro',
 
 args = parser.parse_args()
 
-save_dir = f'{args.save_dir}_cl[{args.cl}]_sl[{args.sl}]'
-save_dir = Path(save_dir)
+save_dir = Path(args.save_dir)
 save_dir.mkdir(exist_ok=True, parents=True)
 
-# process_dir = args.opt_pro / save_dir
-# process_dir.mkdir(exist_ok=True, parents=True)
+process_dir = args.opt_pro / save_dir
+process_dir.mkdir(exist_ok=True, parents=True)
 if args.content_list is not None:
     with open(args.content_list, 'r') as f:
         lines = f.readlines()
@@ -307,18 +304,18 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
     # print(content_name)
     for style_image, style_image_hr, style_mask, style_name in style_loader:
 
+        output_filename = f'{content_name[0]}-{style_name[0]}.png'
+        output_filename = output_filename.replace(' ', '_')
+
         if not args.gbp:
-            output_path = os.path.join(
-                str(save_dir), f'{content_name[0]}-{style_name[0]}.png')
+            output_path = os.path.join(args.save_dir, output_filename)
         else:
             person_name, extention = os.path.splitext(content_name[0])
-            output_dir = os.path.join(str(save_dir),
+            output_dir = os.path.join(args.save_dir,
                                       person_name).replace(' ', '_')
             if not os.path.exists(output_dir):
                 Path(output_dir).mkdir(exist_ok=True, parents=True)
-            output_path = os.path.join(
-                output_dir,
-                f'{content_name[0]}-{style_name[0]}.png').replace(' ', '_')
+            output_path = os.path.join(output_dir, output_filename)
 
         if os.path.exists(output_path):
             print(f'Stylization exist in {output_path}')
@@ -371,7 +368,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
         # targets = style_targets + content_targets + laplacia_targets
         M = Maintainer(vgg, content_image, style_image, content_layers,
                        style_layers, laplacia_layers, device, args.kl, args.km,
-                       content_mask, style_mask, args.use_mask, args.mean)
+                       content_mask, style_mask, args.use_mask, args.mean,
+                       save_dir)
 
         # %%
 
@@ -407,7 +405,16 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
                     M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                                              M.laplacian_s_feats, args.kl)
+                                              M.laplacian_s_feats, args.kl,
+                                              n_iter[0])
+
+                    out_img_lr = post_tensor(
+                        opt_img.data.cpu().squeeze()).unsqueeze(0)
+                    inter_path = os.path.join(save_dir, 'inter')
+                    os.makedirs(inter_path, exist_ok=True)
+                    torchvision.utils.save_image(
+                        out_img_lr.clone(),
+                        os.path.join(inter_path, f'{n_iter[0]}.png'))
                     # M.laplacian_updated = True
                     # M.update_loss_fns_with_lg(out[len(content_layers) + len(style_layers):], M.laplacian_s_feats)
                     print('Update: Laplacian graph and Loss functions: %d' %
@@ -418,6 +425,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
             optimizer.step(closure)
 
+        M.lp_recorder.plot(output_filename)
         # display result
         out_img = postp(opt_img.data[0].cpu().squeeze())
         # imshow(out_img)
@@ -444,7 +452,8 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
 
         M = Maintainer(vgg, content_image_hr, style_image_hr, content_layers,
                        style_layers, laplacia_layers, device, args.kl, args.km,
-                       content_mask, style_mask, args.use_mask, args.mean)
+                       content_mask, style_mask, args.use_mask, args.mean,
+                       save_dir)
 
         # now initialise with upsampled lowres result
         opt_img = prep_hr(out_img).unsqueeze(0)
@@ -490,8 +499,17 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 if n_iter[0] % args.update_step_hr == (
                         args.update_step_hr - 1) and not M.laplacian_updated:
                     # Using output as content image to update laplacian graph dynamiclly during trainig.
+
                     M.update_loss_fns_with_lg(out[-len(laplacia_layers):],
-                                              M.laplacian_s_feats, args.kl)
+                                              M.laplacian_s_feats, args.kl,
+                                              n_iter[0])
+                    out_img_hr = post_tensor(
+                        opt_img.data.cpu().squeeze()).unsqueeze(0)
+                    inter_path = os.path.join(save_dir, 'inter2')
+                    os.makedirs(inter_path, exist_ok=True)
+                    torchvision.utils.save_image(
+                        out_img_hr.clone(),
+                        os.path.join(inter_path, f'{n_iter[0]}.png'))
                     # M.update_loss_fns_with_lg(out[-len(laplacia_layers) + -len(mutex_layers):-len(mutex_layers)],
                     #                           M.laplacian_s_feats)
                     # pass
@@ -503,7 +521,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
                 return loss
 
             optimizer.step(closure)
-
+        M.lp_recorder.plot(output_filename)
         end = time.time()
         total_time += end - start
         avg_time = total_time / epoch
@@ -523,7 +541,7 @@ for content_image, content_image_hr, content_mask, content_name in content_loade
             outputs = torch.cat(outputs, dim=0)
             o = torch.cat([style_images, outputs], dim=0)
             path = os.path.join(
-                str(save_dir),
+                args.save_dir,
                 'total-{}-{}-{}.png'.format(epoch, content_name[0],
                                             style_name[0]))
             torchvision.utils.save_image(o, path, nrow=args.batch_size)
