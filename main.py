@@ -143,8 +143,10 @@ style_layers = ['r11', 'r21', 'r31', 'r41', 'r51']
 # style_layers = []
 # style_weights = []
 
-alpha = args.cw / (args.cw + args.lw)
-beta = args.lw / (args.cw + args.lw)
+# alpha = args.cw / (args.cw + args.lw)
+# beta = args.lw / (args.cw + args.lw)
+alpha = args.cw
+beta = args.lw
 # beta = args.lw
 # content_layers = ['r42']
 # content_weights = [1e6 * 6]
