@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-CUDA_VISIBLE_DEVICES=0 python sast_transfer.py --content_dir images/contents_0425_l1 --content_src datasets/04191521_1000_100_1/warp   --content_list images/contents_list/l1.txt  --style_dir images/styles_104 --kl 50 --cw 1 --sw 1 --lw 30 --save_dir exp/0425_cw1_lw30_k50_l1 p
+CUDA_VISIBLE_DEVICES=0 python sast_transfer.py --content_dir /data/lxd/datasets/2021-10-09-weight_grid_search2/contents --style_dir /data/lxd/datasets/2021-10-08-weight_grid_search/styles --kl 1 --cw 1 --sw 0 --lw 1 --update_step 10 --update_step_hr 10 --save_dir exp/0425_cw1_lw30_k50_l1_4
